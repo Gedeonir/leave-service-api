@@ -1,0 +1,72 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Employee {
+  id                      Int            @id @default(autoincrement())
+  email                   String         @unique
+  name                    String
+  avatarUrl               String?
+  department              String?
+  role                    Role           @default(STAFF)
+  leaveRequests           LeaveRequest[] @relation("EmployeeLeaveRequests") // Relation name for employee leave requests
+  leaveRequestsAsApprover LeaveRequest[] @relation("ApproverLeaveRequests") // Relation name for approver leave requests
+  createdAt               DateTime       @default(now())
+  LeaveBalance            LeaveBalance[]
+}
+
+model LeaveType {
+  id               Int            @id @default(autoincrement())
+  name             String         @unique
+  defaultDays      Float          @default(0)
+  requiresReason   Boolean        @default(false)
+  requiresDocument Boolean        @default(false)
+  createdAt        DateTime       @default(now())
+  leaveRequests    LeaveRequest[]
+  leaveBalances    LeaveBalance[]
+}
+
+model LeaveRequest {
+  id          Int         @id @default(autoincrement())
+  employee    Employee    @relation("EmployeeLeaveRequests", fields: [employeeId], references: [id]) // Named the relation here
+  employeeId  Int
+  leaveType   LeaveType   @relation(fields: [leaveTypeId], references: [id])
+  leaveTypeId Int
+  startDate   DateTime
+  endDate     DateTime
+  reason      String?
+  status      LeaveStatus @default(PENDING)
+  documentUrl String?
+  approverId  Int?
+  approver    Employee?   @relation("ApproverLeaveRequests", fields: [approverId], references: [id]) // Named the relation here
+  comments    String?
+  createdAt   DateTime    @default(now())
+}
+
+model LeaveBalance {
+  id          Int       @id @default(autoincrement())
+  employee    Employee  @relation(fields: [employeeId], references: [id])
+  employeeId  Int
+  leaveType   LeaveType @relation(fields: [leaveTypeId], references: [id])
+  leaveTypeId Int
+  balance     Float
+  updatedAt   DateTime  @updatedAt
+}
+
+enum Role {
+  STAFF
+  MANAGER
+  ADMIN
+}
+
+enum LeaveStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
