@@ -24,9 +24,9 @@ mongod
 # Getting Started
 - **1. Clone or Download the Project**
 
-git clone <your-project-url>
+git clone https://github.com/Gedeonir/leave-service-api.git
 
-cd <project-folder>
+cd leave-service-api
 
 Or extract the ZIP if it was sent manually.
 
