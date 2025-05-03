@@ -17,6 +17,7 @@ app.use(cors());
 app.use('/api/leaves', leaveRoutes);
 app.use('/api/balance', balanceRoutes);
 app.use('/api/team', teamRoutes);
+app.use('/api/employees', require('./routes/employeesRoutes'));
 
 
 // Run on 1st of each month at midnight
