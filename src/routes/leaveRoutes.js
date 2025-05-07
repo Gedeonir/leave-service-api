@@ -137,11 +137,11 @@ router.post('/request/new', authMiddleware, async (req, res) => {
 router.put('/:id/status', async (req, res) => {
   const { status, approverId, comments } = req.body;
   try {
-    // const updated = await LeaveRequest.findByIdAndUpdate(
-    //   req.params.id,
-    //   { status, approver: approverId, comments },
-    //   { new: true }
-    // );
+    const updated = await LeaveRequest.findByIdAndUpdate(
+      req.params.id,
+      { status, approver: approverId, comments },
+      { new: true }
+    );
     res.status(200).json('updated');
   } catch (err) {
     res.status(400).json({ error: err.message });

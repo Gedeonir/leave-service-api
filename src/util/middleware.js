@@ -35,6 +35,7 @@ const authMiddleware = async (req, res, next) => {
             throw new Error("User not found");
           }
           req.user = user;
+          req.employees = employees;
           next();
         }
       } catch (error) {

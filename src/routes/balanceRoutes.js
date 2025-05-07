@@ -3,6 +3,8 @@ const router = express.Router();
 const LeaveBalance = require("../../models/LeaveBalance");
 const LeaveType = require("../../models/Leave");
 const Employee = require("../../models/Employee");
+const { DateTime } = require("luxon");
+const authMiddleware = require("../util/middleware");
 
 // GET /balance/:employeeId — Get all balances for an employee
 router.get("/:employeeId", async (req, res) => {
@@ -57,60 +59,59 @@ router.post("/adjust", async (req, res) => {
   }
 });
 
-// POST /balance/accrue — Monthly accrual for all employees
-router.post("/accrue", async (req, res) => {
+router.post("/accrue", authMiddleware, async (req, res) => {
   try {
-    const leaveTypes = await LeaveType.find(); // For each type's default
-    const employees = await Employee.find();
+    const leaveTypes = await LeaveType.find();
+    const today = DateTime.now().setZone("Africa/Kigali");
 
-    for (const employee of employees) {
+
+    for (const employee of req.employees) {
       for (const type of leaveTypes) {
-        const accrual = 1.66; // can be dynamic per type if needed
+        const accrual = 1.66;
 
         let balance = await LeaveBalance.findOne({
-          employee: employee._id,
+          employee: employee.id,
           leaveType: type._id,
         });
 
         if (!balance) {
+          // Create new balance
           balance = new LeaveBalance({
-            employee: employee._id,
+            employee: employee.id,
             leaveType: type._id,
             balance: accrual,
             used: 0,
-            lastAccrualDate: new Date(),
+            lastAccrualDate: today.toJSDate(),
           });
         } else {
-          balance.total += accrual;
-          balance.lastAccrualDate = new Date();
+          const unused = balance.balance - balance.used;
+
+          // Jan 1st: Carry forward max 5 days
+          if (today.month === 1 && today.day === 1) {
+            balance.balance = Math.min(unused, 5);
+            balance.used = 0; // Reset used since it's a new year
+          }
+
+          // Jan 31st: Expire excess carry-forward
+          if (today.month === 1 && today.day === 31) {
+            const updatedUnused = balance.balance - balance.used;
+            if (updatedUnused > 5) {
+              balance.total = balance.used + 5;
+            }
+          }
+
+          // Always accrue monthly
+          balance.balance += accrual;
+          balance.lastAccrualDate = today.toJSDate();
         }
 
         await balance.save();
       }
     }
 
-    res.status(200).json({ message: "Accrual completed" });
+    res.status(200).json({ message: "Accrual completed with year-end rules" });
   } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// PUT /balance/use — Deduct balance when leave is used
-router.put("/use", async (req, res) => {
-  const { employeeId, leaveTypeId, daysUsed } = req.body;
-
-  try {
-    const balance = await LeaveBalance.findOne({ employee: employeeId, leaveType: leaveTypeId });
-
-    if (!balance || balance.balance - balance.used < daysUsed) {
-      return res.status(400).json({ error: "Insufficient balance" });
-    }
-
-    balance.used += daysUsed;
-    await balance.save();
-
-    res.status(200).json({ message: "Leave deducted", balance });
-  } catch (err) {
+    console.log(err);
     res.status(500).json({ error: err.message });
   }
 });
